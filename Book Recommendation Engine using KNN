@@ -1,0 +1,44 @@
+!pip install numpy pandas scikit-learn
+data = data.dropna(subset=['User-ID', 'ISBN', 'Book-Rating'])
+print(data.duplicated(subset=['User-ID', 'ISBN']).sum())
+data = data.groupby(['User-ID', 'ISBN'], as_index=False)['Book-Rating'].mean()
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import MinMaxScaler
+
+# Load the dataset (replace with your dataset path)
+books = pd.read_csv(r'C:\Users\admin\Documents\Tra\Bk\Books.csv')
+ratings = pd.read_csv(r'C:\Users\admin\Documents\rat\ratings1\Ratings.csv')
+
+# Merge books and ratings data
+data = pd.merge(ratings, books, on='book_id')
+
+# Create a pivot table (users as rows, books as columns)
+pivot_table = data.pivot_table(index='user_id', columns='title', values='rating').fillna(0)
+
+# Normalize the data
+scaler = MinMaxScaler()
+normalized_data = scaler.fit_transform(pivot_table)
+
+# Build KNN model
+model = NearestNeighbors(metric='cosine', algorithm='brute')
+model.fit(normalized_data)
+
+# Function to recommend books
+def recommend_books(book_title, n_recommendations=5):
+    if book_title not in pivot_table.columns:
+        print("Book not found in the dataset.")
+        return
+    
+    book_index = pivot_table.columns.get_loc(book_title)
+    
+    distances, indices = model.kneighbors([normalized_data[:, book_index]], n_neighbors=n_recommendations + 1)
+    
+    print(f"\nRecommendations for '{book_title}':\n")
+    for i in range(1, n_recommendations + 1):
+        recommended_book = pivot_table.columns[indices[0][i]]
+        print(f"{i}. {recommended_book}")
+
+# Example usage
+recommend_books('The Catcher in the Rye', n_recommendations=5)
