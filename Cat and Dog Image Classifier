@@ -1,0 +1,108 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# Define paths (replace with your dataset path)
+train_dir = r'C:\Users\admin\Documents\training'
+validation_dir = r'C:\Users\admin\Documents\testing'
+
+# Data Augmentation and Preprocessing
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+
+validation_datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='binary'
+)
+
+validation_generator = validation_datagen.flow_from_directory(
+    validation_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='binary'
+)
+
+# Build the CNN model
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 3)),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Flatten(),
+    layers.Dense(512, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(1, activation='sigmoid')  # Binary classification (cat or dog)
+])
+
+# Compile the model
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# Train the model
+history = model.fit(
+    train_generator,
+    epochs=10,
+    validation_data=validation_generator
+)
+
+# Save the model
+model.save('cat_dog_classifier.h5')
+
+# Plot accuracy and loss
+plt.figure(figsize=(12, 5))
+
+# Accuracy
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Accuracy')
+plt.legend()
+
+# Loss
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Loss')
+plt.legend()
+
+plt.show()
+
+# Prediction Function
+import cv2
+
+def predict_image(image_path):
+    img = cv2.imread(image_path)
+    img = cv2.resize(img, (150, 150))
+    img = np.expand_dims(img, axis=0) / 255.0
+
+    prediction = model.predict(img)
+    if prediction[0][0] > 0.5:
+        print("It's a Dog! 🐶")
+    else:
+        print("It's a Cat! 🐱")
+
+# Example prediction
+predict_image(r'C:\Users\admin\Documents\pro\example1.jpg')
